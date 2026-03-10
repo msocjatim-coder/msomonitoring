@@ -3,104 +3,184 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>OSS Telkom Monitoring Dashboard</title>
+    <title>OSS Telkom Monitoring</title>
     <link rel="stylesheet" href="style.css">
-    <!-- Chart.js untuk visualisasi -->
+    <!-- Font Awesome untuk ikon -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- Supabase JavaScript Client -->
+    <!-- Supabase JS -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Papa Parse untuk baca CSV -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 </head>
 <body>
-    <div class="container">
-        <!-- Header -->
-        <div class="header">
-            <h1>📊 OSS Telkom Monitoring</h1>
-            <p>Real-time dashboard dari database Supabase</p>
-            <div class="update-time" id="updateTime">Memuat data...</div>
-        </div>
+    <div class="app-wrapper">
+        <!-- Navbar -->
+        <nav class="navbar">
+            <div class="nav-brand">
+                <i class="fas fa-chart-line"></i>
+                <span>OSS Telkom Monitoring</span>
+            </div>
+            <div class="nav-actions">
+                <button class="btn-upload" id="uploadBtn">
+                    <i class="fas fa-cloud-upload-alt"></i>
+                    Upload CSV
+                </button>
+                <button class="btn-refresh" id="refreshBtn">
+                    <i class="fas fa-sync-alt"></i>
+                </button>
+            </div>
+        </nav>
 
-        <!-- Stats Cards -->
-        <div class="stats-grid">
-            <div class="stat-card">
-                <div class="stat-label">Total Sites</div>
-                <div class="stat-value" id="totalSites">0</div>
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Last Update Info -->
+            <div class="update-badge" id="updateTime">
+                <i class="far fa-clock"></i> Memuat data...
             </div>
-            <div class="stat-card">
-                <div class="stat-label">Active Sites</div>
-                <div class="stat-value" id="activeSites">0</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">Average Uptime</div>
-                <div class="stat-value" id="avgUptime">0%</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">Total Alerts</div>
-                <div class="stat-value" id="totalAlerts">0</div>
-            </div>
-        </div>
 
-        <!-- Filter Section -->
-        <div class="filters">
-            <select id="regionFilter" class="filter-select">
-                <option value="">Semua Region</option>
-            </select>
-            <select id="statusFilter" class="filter-select">
-                <option value="">Semua Status</option>
-                <option value="Active">Active</option>
-                <option value="Maintenance">Maintenance</option>
-                <option value="Down">Down</option>
-            </select>
-            <button id="refreshBtn" class="refresh-btn">🔄 Refresh</button>
-        </div>
+            <!-- Stats Cards -->
+            <div class="stats-grid">
+                <div class="stat-card primary">
+                    <div class="stat-icon">
+                        <i class="fas fa-server"></i>
+                    </div>
+                    <div class="stat-detail">
+                        <span class="stat-label">Total Sites</span>
+                        <span class="stat-value" id="totalSites">0</span>
+                    </div>
+                </div>
+                <div class="stat-card success">
+                    <div class="stat-icon">
+                        <i class="fas fa-check-circle"></i>
+                    </div>
+                    <div class="stat-detail">
+                        <span class="stat-label">Active Sites</span>
+                        <span class="stat-value" id="activeSites">0</span>
+                    </div>
+                </div>
+                <div class="stat-card warning">
+                    <div class="stat-icon">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                    <div class="stat-detail">
+                        <span class="stat-label">Avg Uptime</span>
+                        <span class="stat-value" id="avgUptime">0%</span>
+                    </div>
+                </div>
+                <div class="stat-card danger">
+                    <div class="stat-icon">
+                        <i class="fas fa-exclamation-triangle"></i>
+                    </div>
+                    <div class="stat-detail">
+                        <span class="stat-label">Total Alerts</span>
+                        <span class="stat-value" id="totalAlerts">0</span>
+                    </div>
+                </div>
+            </div>
 
-        <!-- Charts Grid -->
-        <div class="charts-grid">
-            <div class="chart-card">
-                <h3>Status Distribution</h3>
-                <canvas id="statusChart"></canvas>
+            <!-- Filters -->
+            <div class="filters-section">
+                <div class="filter-group">
+                    <label><i class="fas fa-map-marker-alt"></i> Region</label>
+                    <select id="regionFilter" class="filter-select">
+                        <option value="">Semua Region</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label><i class="fas fa-circle"></i> Status</label>
+                    <select id="statusFilter" class="filter-select">
+                        <option value="">Semua Status</option>
+                        <option value="Active">Active</option>
+                        <option value="Maintenance">Maintenance</option>
+                        <option value="Down">Down</option>
+                    </select>
+                </div>
             </div>
-            <div class="chart-card">
-                <h3>Uptime by Region</h3>
-                <canvas id="regionChart"></canvas>
-            </div>
-            <div class="chart-card">
-                <h3>Top 10 Sites by Uptime</h3>
-                <canvas id="topSitesChart"></canvas>
-            </div>
-            <div class="chart-card">
-                <h3>Alert Distribution</h3>
-                <canvas id="alertChart"></canvas>
-            </div>
-        </div>
 
-        <!-- Data Table -->
-        <div class="table-container">
-            <h3>📋 Data OSS Sites</h3>
-            <table id="dataTable">
-                <thead>
-                    <tr>
-                        <th>Site ID</th>
-                        <th>Site Name</th>
-                        <th>Region</th>
-                        <th>Status</th>
-                        <th>Uptime %</th>
-                        <th>Bandwidth</th>
-                        <th>Last Maintenance</th>
-                        <th>Alerts</th>
-                    </tr>
-                </thead>
-                <tbody id="tableBody">
-                    <tr><td colspan="8" class="loading">Memuat data...</td></tr>
-                </tbody>
-            </table>
-        </div>
+            <!-- Charts Grid -->
+            <div class="charts-grid">
+                <div class="chart-card">
+                    <h3><i class="fas fa-chart-pie"></i> Status Distribution</h3>
+                    <canvas id="statusChart"></canvas>
+                </div>
+                <div class="chart-card">
+                    <h3><i class="fas fa-chart-bar"></i> Uptime by Region</h3>
+                    <canvas id="regionChart"></canvas>
+                </div>
+                <div class="chart-card">
+                    <h3><i class="fas fa-trophy"></i> Top 10 Sites by Uptime</h3>
+                    <canvas id="topSitesChart"></canvas>
+                </div>
+                <div class="chart-card">
+                    <h3><i class="fas fa-bell"></i> Alert Distribution</h3>
+                    <canvas id="alertChart"></canvas>
+                </div>
+            </div>
 
-        <!-- Upload Info -->
-        <div class="upload-info">
-            <p>📤 Untuk upload data baru, gunakan aplikasi uploader terpisah atau insert manual di Supabase</p>
-            <p class="small">Data otomatis terupdate setiap halaman di-refresh</p>
+            <!-- Data Table -->
+            <div class="table-wrapper">
+                <h3><i class="fas fa-table"></i> Data OSS Sites</h3>
+                <div class="table-responsive">
+                    <table id="dataTable">
+                        <thead>
+                            <tr>
+                                <th>Site ID</th>
+                                <th>Site Name</th>
+                                <th>Region</th>
+                                <th>Status</th>
+                                <th>Uptime %</th>
+                                <th>Bandwidth</th>
+                                <th>Last Maintenance</th>
+                                <th>Alerts</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tableBody">
+                            <tr><td colspan="8" class="loading">Memuat data...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- MODAL UPLOAD -->
+    <div class="modal" id="uploadModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-cloud-upload-alt"></i> Upload Data OSS</h3>
+                <button class="modal-close" id="closeModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <!-- Drag & Drop Area -->
+                <div class="upload-area" id="dropArea">
+                    <i class="fas fa-file-csv"></i>
+                    <p>Drag & drop file CSV di sini</p>
+                    <span>atau</span>
+                    <label for="fileInput" class="btn-browse">Pilih File</label>
+                    <input type="file" id="fileInput" accept=".csv" hidden>
+                    <p class="file-info" id="fileInfo"></p>
+                </div>
+
+                <!-- Preview Table (hidden initially) -->
+                <div class="preview-section" id="previewSection" style="display: none;">
+                    <h4>Preview Data</h4>
+                    <div class="preview-table"></div>
+                    
+                    <div class="modal-actions">
+                        <button class="btn-cancel" id="cancelUpload">Batal</button>
+                        <button class="btn-confirm" id="confirmUpload">
+                            <i class="fas fa-save"></i> Simpan ke Database
+                        </button>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
+
+    <!-- Toast Notification -->
+    <div class="toast" id="toast"></div>
 
     <script src="dashboard.js"></script>
 </body>
