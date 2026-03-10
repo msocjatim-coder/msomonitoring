@@ -244,12 +244,15 @@ function handleFile(file) {
         fileInfo.innerHTML = `📄 ${file.name} (${(file.size/1024).toFixed(2)} KB)`;
     }
     
-    // Parse CSV dengan PapaParse
+    // Parse CSV dengan PapaParse - sesuaikan dengan struktur CSV Anda
     Papa.parse(file, {
         header: true,
         skipEmptyLines: true,
+        encoding: "UTF-8",
         complete: function(results) {
             console.log('CSV parsed:', results.data.length, 'rows');
+            console.log('Sample data:', results.data[0]); // Lihat struktur kolom
+            
             previewData = results.data;
             showPreview(results.data);
         },
@@ -299,21 +302,21 @@ async function confirmUpload() {
     try {
         showToast('Menyimpan data ke database...', 'info');
         
-        // Validasi dan mapping data
+        // Mapping data CSV ke struktur tabel Supabase
         const validData = previewData.map(row => ({
-            site_id: String(row.site_id || row.Site_ID || ''),
-            site_name: String(row.site_name || row.Site_Name || ''),
-            region: String(row.region || row.Region || ''),
-            status: String(row.status || row.Status || ''),
-            uptime_percentage: parseFloat(row.uptime_percentage || row.Uptime || 0),
-            bandwidth_usage: parseFloat(row.bandwidth_usage || row.Bandwidth || 0),
-            last_maintenance: row.last_maintenance || row.Last_Maintenance || new Date().toISOString().split('T')[0],
-            alert_count: parseInt(row.alert_count || row.Alerts || 0)
+            site_id: String(row['SERVICE ID'] || row['SERVICE_ID'] || row['service_id'] || ''),
+            site_name: String(row['SUMMARY'] || row['summary'] || '').substring(0, 100),
+            region: String(row['REGION'] || row['WITEL'] || row['region'] || 'Unknown'),
+            status: mapStatus(row['STATUS'] || row['status'] || 'Unknown'),
+            status_date: row['STATUS DATE'] || row['status_date'] || new Date().toISOString(),
+            uptime_percentage: calculateUptime(row),
+            bandwidth_usage: 0,
+            last_maintenance: new Date().toISOString().split('T')[0],
+            alert_count: parseInt(row['alert_count'] || 0)
         }));
         
         console.log('Valid data:', validData.length, 'records');
         
-        // UBAH SINI: dari supabase menjadi supabaseClient
         const { data, error } = await supabaseClient
             .from('oss_data')
             .insert(validData)
@@ -323,12 +326,50 @@ async function confirmUpload() {
         
         showToast(`✅ Berhasil upload ${validData.length} data!`, 'success');
         closeModal();
-        loadData(); // Reload data
+        loadData();
         
     } catch (error) {
         console.error('Upload error:', error);
         showToast('Gagal upload: ' + error.message, 'error');
     }
+}
+
+// Fungsi bantu untuk mapping status
+function mapStatus(status) {
+    if (!status) return 'Unknown';
+    
+    const statusUpper = String(status).toUpperCase();
+    if (statusUpper.includes('CLOSE') || statusUpper.includes('RESOLVE')) return 'Active';
+    if (statusUpper.includes('PENDING')) return 'Maintenance';
+    if (statusUpper.includes('OPEN') || statusUpper.includes('PROGRESS')) return 'Maintenance';
+    return 'Unknown';
+}
+
+// Fungsi bantu hitung uptime dari TTR
+function calculateUptime(row) {
+    // Contoh: hitung dari TTR CUSTOMER atau TTR END TO END
+    const ttr = row['TTR CUSTOMER'] || row['TTR END TO END'] || '00:00:00';
+    
+    // Parse format "HH:MM:SS" ke angka
+    const parts = ttr.split(':');
+    if (parts.length === 3) {
+        const hours = parseInt(parts[0] || 0);
+        const minutes = parseInt(parts[1] || 0);
+        
+        // Asumsi: target 4 jam (240 menit)
+        const totalMinutes = hours * 60 + minutes;
+        const targetMinutes = 240; // 4 jam
+        
+        if (totalMinutes <= targetMinutes) {
+            return 100; // Sesuai SLA
+        } else {
+            // Kurangi 1% per 10 menit keterlambatan
+            const penalty = Math.min(30, Math.floor((totalMinutes - targetMinutes) / 10));
+            return Math.max(70, 100 - penalty);
+        }
+    }
+    
+    return 99.5; // Default
 }
 
 // ==================== FUNGSI CHART ====================
@@ -481,6 +522,7 @@ function updateAlertChart() {
 }
 
 // ==================== FUNGSI TABLE ====================
+// ==================== FUNGSI TABLE ====================
 function updateTable() {
     const tbody = document.getElementById('tableBody');
     if (!tbody) return;
@@ -488,18 +530,40 @@ function updateTable() {
     tbody.innerHTML = '';
     
     if (filteredData.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" class="loading">Tidak ada data</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="10" class="loading">Tidak ada data</td></tr>';
         return;
     }
     
-    filteredData.slice(0, 20).forEach(site => {
+    filteredData.slice(0, 20).forEach((site, index) => {
         if (!site) return;
         const row = tbody.insertRow();
+        
+        // Format STATUS DATE
+        let statusDate = site.status_date || '-';
+        if (statusDate && statusDate !== '-') {
+            try {
+                const date = new Date(statusDate);
+                if (!isNaN(date.getTime())) {
+                    statusDate = date.toLocaleString('id-ID', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    });
+                }
+            } catch (e) {
+                console.log('Error parsing date:', e);
+            }
+        }
+        
         row.innerHTML = `
-            <td><span class="badge-id">${site.site_id || '-'}</span></td>
-            <td><strong>${site.site_name || '-'}</strong></td>
-            <td>${site.region || '-'}</td>
+            <td class="text-center"><span class="badge-id">${index + 1}</span></td>
             <td><span class="status-badge status-${(site.status || 'unknown').toLowerCase()}">${site.status || '-'}</span></td>
+            <td><span class="date-badge">${statusDate}</span></td>
+            <td><span class="badge-id">${site.site_id || '-'}</span></td>
+            <td><strong>${(site.site_name || '').substring(0, 30)}${site.site_name?.length > 30 ? '...' : ''}</strong></td>
+            <td>${site.region || '-'}</td>
             <td class="text-right">${site.uptime_percentage || 0}%</td>
             <td class="text-right">${site.bandwidth_usage || 0} Mbps</td>
             <td>${site.last_maintenance || '-'}</td>
