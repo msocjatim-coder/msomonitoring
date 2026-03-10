@@ -589,3 +589,61 @@ tr:hover {
         font-size: 1.5rem;
     }
 }
+
+/* Status Date Badge */
+.date-badge {
+    background: #e5e7eb;
+    color: #1f2937;
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    font-family: monospace;
+    white-space: nowrap;
+}
+
+/* Kolom NO */
+.badge-id {
+    background: #f3f4f6;
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-family: monospace;
+    font-weight: 600;
+    color: #4b5563;
+}
+
+/* Responsive table */
+.table-responsive {
+    overflow-x: auto;
+    max-width: 100%;
+}
+
+table {
+    min-width: 1200px; /* Lebar minimum untuk semua kolom */
+}
+
+th, td {
+    white-space: nowrap;
+    padding: 12px 15px;
+}
+
+/* Warna status */
+.status-active {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.status-maintenance {
+    background: #fed7aa;
+    color: #92400e;
+}
+
+.status-down {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.status-unknown {
+    background: #f3f4f6;
+    color: #4b5563;
+}
