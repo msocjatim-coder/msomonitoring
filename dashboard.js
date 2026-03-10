@@ -1,6 +1,6 @@
 // Konfigurasi Supabase - GANTI DENGAN PUNYA ANDA!
-const SUPABASE_URL = 'https://project-anda.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ...'; // anon public key
+const SUPABASE_URL = 'https://wsecorjbjkivqrxietja.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndzZWNvcmpiamtpdnFyeGlldGphIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMxMTc1MzEsImV4cCI6MjA4ODY5MzUzMX0.So3sKOR0TGt8GIhXpIFCoFhkL6bE9n6C0YzDUJKA5IE'; // anon public key
 
 // Inisialisasi Supabase client
 const supabase = supabaseJs.createClient(SUPABASE_URL, SUPABASE_KEY);
