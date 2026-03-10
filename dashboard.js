@@ -1,7 +1,10 @@
 // ==================== KONFIGURASI SUPABASE ====================
-const SUPABASE_URL = 'https://wsecorjbjkivqrxietja.supabase.co'; // GANTI!
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndzZWNvcmpiamtpdnFyeGlldGphIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMxMTc1MzEsImV4cCI6MjA4ODY5MzUzMX0.So3sKOR0TGt8GIhXpIFCoFhkL6bE9n6C0YzDUJKA5IE'; // GANTI!
-const supabase = supabaseJs.createClient(SUPABASE_URL, SUPABASE_KEY);
+const SUPABASE_URL = 'https://sqqowbbgnxbspvcntgdq.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNxcW93YmJnbnhic3B2Y250Z2RxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMwOTIwNTAsImV4cCI6MjA4ODY2ODA1MH0.1LubHHVmSYFDQq65RBqOznrp5z1EqiuG8eE8H2jv1bU';
+
+// PASTI PAKAI NAMA YANG BERBEDA, JANGAN "supabase"
+const supabaseClient = supabaseJs.createClient(SUPABASE_URL, SUPABASE_KEY);
+
 // ==================== STATE GLOBAL ====================
 let allData = [];
 let filteredData = [];
@@ -40,7 +43,7 @@ function initEventListeners() {
         });
     }
     
-    // UPLOAD BUTTON - YANG INI PALING PENTING
+    // UPLOAD BUTTON
     if (uploadBtn) {
         console.log('Upload button ditemukan');
         uploadBtn.addEventListener('click', function(e) {
@@ -151,7 +154,8 @@ async function loadData() {
         console.log('Loading data from Supabase...');
         showToast('Mengambil data...', 'info');
         
-        const { data, error } = await supabase
+        // UBAH SINI: dari supabase menjadi supabaseClient
+        const { data, error } = await supabaseClient
             .from('oss_data')
             .select('*')
             .order('created_at', { ascending: false });
@@ -290,8 +294,8 @@ async function confirmUpload() {
         
         console.log('Valid data:', validData.length, 'records');
         
-        // Insert ke Supabase
-        const { data, error } = await supabase
+        // UBAH SINI: dari supabase menjadi supabaseClient
+        const { data, error } = await supabaseClient
             .from('oss_data')
             .insert(validData)
             .select();
