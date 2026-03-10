@@ -3,7 +3,7 @@ const SUPABASE_URL = 'https://sqqowbbgnxbspvcntgdq.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNxcW93YmJnbnhic3B2Y250Z2RxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMwOTIwNTAsImV4cCI6MjA4ODY2ODA1MH0.1LubHHVmSYFDQq65RBqOznrp5z1EqiuG8eE8H2jv1bU';
 
 // PASTI PAKAI NAMA YANG BERBEDA, JANGAN "supabase"
-const supabaseClient = supabaseJs.createClient(SUPABASE_URL, SUPABASE_KEY);
+const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // ==================== STATE GLOBAL ====================
 let allData = [];
@@ -55,14 +55,29 @@ function initEventListeners() {
         console.error('Upload button TIDAK ditemukan!');
     }
     
-    // Modal elements
-    const closeModal = document.getElementById('closeModal');
+    // MODAL ELEMENTS - YANG DIPERBAIKI
+    const closeModalBtn = document.getElementById('closeModal');  // Ganti nama
     const cancelUpload = document.getElementById('cancelUpload');
     const fileInput = document.getElementById('fileInput');
     const confirmBtn = document.getElementById('confirmUpload');
     
-    if (closeModal) closeModal.addEventListener('click', closeModal);
-    if (cancelUpload) cancelUpload.addEventListener('click', resetUpload);
+    // Close button - PASTI PAKAI FUNGSI closeModal()
+    if (closeModalBtn) {
+        closeModalBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            console.log('Close button clicked');
+            closeModal(); // Panggil fungsi global closeModal
+        });
+    }
+    
+    // Cancel button
+    if (cancelUpload) {
+        cancelUpload.addEventListener('click', function(e) {
+            e.preventDefault();
+            console.log('Cancel button clicked');
+            resetUpload();
+        });
+    }
     
     // File input
     if (fileInput) {
@@ -95,14 +110,18 @@ function initEventListeners() {
     // Browse button
     const browseBtn = document.querySelector('.btn-browse');
     if (browseBtn) {
-        browseBtn.addEventListener('click', function() {
+        browseBtn.addEventListener('click', function(e) {
+            e.preventDefault();
             document.getElementById('fileInput').click();
         });
     }
     
     // Confirm upload
     if (confirmBtn) {
-        confirmBtn.addEventListener('click', confirmUpload);
+        confirmBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            confirmUpload();
+        });
     }
     
     // Click outside modal
