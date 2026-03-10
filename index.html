@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OSS Telkom Monitoring Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Chart.js untuk visualisasi -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Supabase JavaScript Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>📊 OSS Telkom Monitoring</h1>
+            <p>Real-time dashboard dari database Supabase</p>
+            <div class="update-time" id="updateTime">Memuat data...</div>
+        </div>
+
+        <!-- Stats Cards -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-label">Total Sites</div>
+                <div class="stat-value" id="totalSites">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Active Sites</div>
+                <div class="stat-value" id="activeSites">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Average Uptime</div>
+                <div class="stat-value" id="avgUptime">0%</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Total Alerts</div>
+                <div class="stat-value" id="totalAlerts">0</div>
+            </div>
+        </div>
+
+        <!-- Filter Section -->
+        <div class="filters">
+            <select id="regionFilter" class="filter-select">
+                <option value="">Semua Region</option>
+            </select>
+            <select id="statusFilter" class="filter-select">
+                <option value="">Semua Status</option>
+                <option value="Active">Active</option>
+                <option value="Maintenance">Maintenance</option>
+                <option value="Down">Down</option>
+            </select>
+            <button id="refreshBtn" class="refresh-btn">🔄 Refresh</button>
+        </div>
+
+        <!-- Charts Grid -->
+        <div class="charts-grid">
+            <div class="chart-card">
+                <h3>Status Distribution</h3>
+                <canvas id="statusChart"></canvas>
+            </div>
+            <div class="chart-card">
+                <h3>Uptime by Region</h3>
+                <canvas id="regionChart"></canvas>
+            </div>
+            <div class="chart-card">
+                <h3>Top 10 Sites by Uptime</h3>
+                <canvas id="topSitesChart"></canvas>
+            </div>
+            <div class="chart-card">
+                <h3>Alert Distribution</h3>
+                <canvas id="alertChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Data Table -->
+        <div class="table-container">
+            <h3>📋 Data OSS Sites</h3>
+            <table id="dataTable">
+                <thead>
+                    <tr>
+                        <th>Site ID</th>
+                        <th>Site Name</th>
+                        <th>Region</th>
+                        <th>Status</th>
+                        <th>Uptime %</th>
+                        <th>Bandwidth</th>
+                        <th>Last Maintenance</th>
+                        <th>Alerts</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody">
+                    <tr><td colspan="8" class="loading">Memuat data...</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Upload Info -->
+        <div class="upload-info">
+            <p>📤 Untuk upload data baru, gunakan aplikasi uploader terpisah atau insert manual di Supabase</p>
+            <p class="small">Data otomatis terupdate setiap halaman di-refresh</p>
+        </div>
+    </div>
+
+    <script src="dashboard.js"></script>
+</body>
+</html>
