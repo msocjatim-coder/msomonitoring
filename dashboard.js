@@ -302,29 +302,72 @@ async function confirmUpload() {
     try {
         showToast('Menyimpan data ke database...', 'info');
         
-        // Mapping data CSV ke struktur tabel Supabase
-        const validData = previewData.map(row => ({
-            site_id: String(row['SERVICE ID'] || row['SERVICE_ID'] || row['service_id'] || ''),
-            site_name: String(row['SUMMARY'] || row['summary'] || '').substring(0, 100),
-            region: String(row['REGION'] || row['WITEL'] || row['region'] || 'Unknown'),
-            status: mapStatus(row['STATUS'] || row['status'] || 'Unknown'),
-            status_date: row['STATUS DATE'] || row['status_date'] || new Date().toISOString(),
-            uptime_percentage: calculateUptime(row),
-            bandwidth_usage: 0,
-            last_maintenance: new Date().toISOString().split('T')[0],
-            alert_count: parseInt(row['alert_count'] || 0)
-        }));
-        
-        console.log('Valid data:', validData.length, 'records');
-        
-        const { data, error } = await supabaseClient
+        // Ambil semua data yang sudah ada di database
+        const { data: existingData, error: fetchError } = await supabaseClient
             .from('oss_data')
-            .insert(validData)
-            .select();
+            .select('incident_id');
         
-        if (error) throw error;
+        if (fetchError) throw fetchError;
         
-        showToast(`✅ Berhasil upload ${validData.length} data!`, 'success');
+        const existingIncidents = new Set(existingData.map(item => item.incident_id));
+        
+        // Pisahkan data baru dan data yang perlu diupdate
+        const newData = [];
+        const updateData = [];
+        
+        previewData.forEach(row => {
+            const incidentId = String(row['INCIDENT'] || row['incident'] || '');
+            const mappedData = {
+                site_id: String(row['SERVICE ID'] || row['SERVICE_ID'] || row['service_id'] || ''),
+                site_name: String(row['SUMMARY'] || row['summary'] || '').substring(0, 100),
+                region: String(row['REGION'] || row['WITEL'] || row['region'] || 'Unknown'),
+                status: mapStatus(row['STATUS'] || row['status'] || 'Unknown'),
+                status_date: row['STATUS DATE'] || row['status_date'] || new Date().toISOString(),
+                incident_id: incidentId,
+                uptime_percentage: calculateUptime(row),
+                bandwidth_usage: 0,
+                last_maintenance: new Date().toISOString().split('T')[0],
+                alert_count: parseInt(row['alert_count'] || 0)
+            };
+            
+            if (existingIncidents.has(incidentId)) {
+                updateData.push(mappedData);
+            } else {
+                newData.push(mappedData);
+            }
+        });
+        
+        console.log(`Data baru: ${newData.length}, Data update: ${updateData.length}`);
+        
+        // Insert data baru
+        if (newData.length > 0) {
+            const { error: insertError } = await supabaseClient
+                .from('oss_data')
+                .insert(newData);
+            
+            if (insertError) throw insertError;
+        }
+        
+        // Update data yang sudah ada (berdasarkan incident_id)
+        for (const item of updateData) {
+            const { error: updateError } = await supabaseClient
+                .from('oss_data')
+                .update({
+                    site_id: item.site_id,
+                    site_name: item.site_name,
+                    region: item.region,
+                    status: item.status,
+                    status_date: item.status_date,
+                    uptime_percentage: item.uptime_percentage,
+                    alert_count: item.alert_count,
+                    last_maintenance: item.last_maintenance
+                })
+                .eq('incident_id', item.incident_id);
+            
+            if (updateError) throw updateError;
+        }
+        
+        showToast(`✅ Berhasil: ${newData.length} baru, ${updateData.length} diupdate`, 'success');
         closeModal();
         loadData();
         
@@ -335,14 +378,32 @@ async function confirmUpload() {
 }
 
 // Fungsi bantu untuk mapping status
+// ==================== FUNGSI MAPPING STATUS ====================
 function mapStatus(status) {
     if (!status) return 'Unknown';
     
     const statusUpper = String(status).toUpperCase();
-    if (statusUpper.includes('CLOSE') || statusUpper.includes('RESOLVE')) return 'Active';
-    if (statusUpper.includes('PENDING')) return 'Maintenance';
-    if (statusUpper.includes('OPEN') || statusUpper.includes('PROGRESS')) return 'Maintenance';
+    
+    // Mapping ke 3 kategori utama
+    if (statusUpper.includes('CLOSE') || statusUpper.includes('RESOLVE') || statusUpper.includes('SOLVED')) {
+        return 'Active';
+    }
+    if (statusUpper.includes('PENDING') || statusUpper.includes('PROGRESS') || statusUpper.includes('BACKEND') || statusUpper.includes('OPEN')) {
+        return 'Maintenance';
+    }
+    if (statusUpper.includes('DOWN') || statusUpper.includes('CRITICAL')) {
+        return 'Down';
+    }
+    
     return 'Unknown';
+}
+
+// Tambahkan fungsi untuk handle NULL dari database
+function getDisplayStatus(status) {
+    if (!status || status === 'null' || status === 'NULL' || status === '') {
+        return 'Unknown';
+    }
+    return status;
 }
 
 // Fungsi bantu hitung uptime dari TTR
@@ -525,18 +586,24 @@ function updateAlertChart() {
 // ==================== FUNGSI TABLE ====================
 function updateTable() {
     const tbody = document.getElementById('tableBody');
-    if (!tbody) return;
-    
-    tbody.innerHTML = '';
-    
-    if (filteredData.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="10" class="loading">Tidak ada data</td></tr>';
+    if (!tbody) {
+        console.error('Table body tidak ditemukan');
         return;
     }
     
-    filteredData.slice(0, 20).forEach((site, index) => {
+    tbody.innerHTML = '';
+    
+    if (!filteredData || filteredData.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="11" class="loading">Tidak ada data</td></tr>';
+        return;
+    }
+    
+    filteredData.forEach((site, index) => {
         if (!site) return;
-        const row = tbody.insertRow();
+        
+        // Gunakan getDisplayStatus untuk menangani null/unknown
+        const displayStatus = getDisplayStatus(site.status);
+        const statusClass = 'status-' + displayStatus.toLowerCase();
         
         // Format STATUS DATE
         let statusDate = site.status_date || '-';
@@ -557,9 +624,11 @@ function updateTable() {
             }
         }
         
+        const row = tbody.insertRow();
         row.innerHTML = `
             <td class="text-center"><span class="badge-id">${index + 1}</span></td>
-            <td><span class="status-badge status-${(site.status || 'unknown').toLowerCase()}">${site.status || '-'}</span></td>
+            <td><span class="incident-badge">${site.incident_id || '-'}</span></td>
+            <td><span class="status-badge ${statusClass}">${displayStatus}</span></td>
             <td><span class="date-badge">${statusDate}</span></td>
             <td><span class="badge-id">${site.site_id || '-'}</span></td>
             <td><strong>${(site.site_name || '').substring(0, 30)}${site.site_name?.length > 30 ? '...' : ''}</strong></td>
